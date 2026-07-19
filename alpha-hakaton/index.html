@@ -1,0 +1,923 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Вайби — AI-наставник</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: #f2f2f7;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .iphone {
+            width: 390px;
+            height: 844px;
+            background: #000;
+            border-radius: 52px;
+            padding: 16px;
+            box-shadow: 0 30px 80px rgba(0,0,0,0.3), inset 0 0 0 2px #333;
+            flex-shrink: 0;
+        }
+        .screen {
+            width: 100%;
+            height: 100%;
+            background: #ffffff;
+            border-radius: 40px;
+            overflow: hidden;
+            padding: 12px 16px 8px;
+            display: flex;
+            flex-direction: column;
+        }
+        .status-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 4px 8px;
+            font-size: 13px;
+            font-weight: 600;
+            color: #1a1a1a;
+        }
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-bottom: 6px;
+            border-bottom: 1px solid #f0f0f0;
+            flex-shrink: 0;
+        }
+        .header-left { display: flex; align-items: center; gap: 10px; }
+        .app-icon {
+            width: 34px; height: 34px; border-radius: 10px; overflow: hidden;
+            box-shadow: 0 2px 8px rgba(217, 43, 43, 0.3); flex-shrink: 0;
+        }
+        .app-icon img { width: 100%; height: 100%; object-fit: cover; display: block; }
+        .app-title-wrapper { display: flex; flex-direction: column; line-height: 1.1; }
+        .app-title { font-size: 17px; font-weight: 700; color: #1a1a1a; }
+        .app-subtitle { font-size: 10px; color: #8e8e93; font-weight: 400; letter-spacing: 0.3px; }
+        .header-right { display: flex; gap: 16px; color: #1a1a1a; font-size: 17px; font-weight: 600; }
+        .content { flex: 1; overflow-y: auto; padding: 12px 0 8px; display: flex; flex-direction: column; }
+        .content::-webkit-scrollbar { width: 3px; }
+        .content::-webkit-scrollbar-thumb { background: #d92b2b; border-radius: 10px; }
+
+        .style-section { display: flex; flex-direction: column; height: 100%; }
+        .bot-message {
+            background: #f2f2f7;
+            border-radius: 16px 16px 16px 4px;
+            padding: 14px 16px;
+            margin-bottom: 16px;
+            font-size: 15px;
+            line-height: 1.5;
+            color: #1a1a1a;
+        }
+        .bot-message strong { color: #d92b2b; }
+        .style-cards { display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px; }
+        .style-card {
+            display: flex; align-items: center; gap: 14px; padding: 14px 16px;
+            border: 2px solid #e5e5ea; border-radius: 14px; background: #fff;
+            cursor: pointer; transition: all 0.2s;
+        }
+        .style-card:hover { border-color: #d92b2b; background: #fdf3f3; }
+        .style-card.selected { border-color: #d92b2b; background: #fdf3f3; box-shadow: 0 0 0 3px rgba(217, 43, 43, 0.15); }
+        .style-icon { font-size: 22px; width: 34px; text-align: center; }
+        .style-info { flex: 1; }
+        .style-name { font-weight: 600; font-size: 15px; color: #1a1a1a; }
+        .style-desc { font-size: 12px; color: #6c6c70; margin-top: 2px; }
+        .style-check {
+            width: 22px; height: 22px; border-radius: 50%; border: 2px solid #c7c7cc;
+            display: flex; align-items: center; justify-content: center; font-size: 12px;
+            color: #fff; transition: all 0.2s;
+        }
+        .style-card.selected .style-check { background: #d92b2b; border-color: #d92b2b; }
+        .btn-continue {
+            padding: 16px; background: #d92b2b; color: #fff; border: none; border-radius: 14px;
+            font-size: 17px; font-weight: 600; cursor: pointer; transition: background 0.2s; margin-top: auto;
+        }
+        .btn-continue:hover { background: #b82222; }
+
+        .chat-area { display: none; flex-direction: column; height: 100%; }
+        .chat-area.active { display: flex; }
+        .chat-messages { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; padding-bottom: 8px; }
+        .chat-messages::-webkit-scrollbar { width: 3px; }
+        .chat-messages::-webkit-scrollbar-thumb { background: #d92b2b; border-radius: 10px; }
+        .chat-message { display: flex; animation: fadeIn 0.3s ease; }
+        .chat-message.bot { justify-content: flex-start; }
+        .chat-message.user { justify-content: flex-end; }
+        .chat-bubble {
+            max-width: 82%; padding: 12px 16px; border-radius: 18px; font-size: 15px; line-height: 1.5;
+        }
+        .chat-message.bot .chat-bubble { background: #f2f2f7; color: #1a1a1a; border-radius: 18px 18px 18px 4px; }
+        .chat-message.user .chat-bubble { background: #d92b2b; color: #fff; border-radius: 18px 18px 4px 18px; }
+
+        .steps-progress { display: flex; align-items: center; gap: 8px; font-size: 12px; color: #6c6c70; margin-bottom: 8px; flex-shrink: 0; }
+        .steps-progress .bar { flex: 1; height: 4px; background: #e5e5ea; border-radius: 2px; overflow: hidden; }
+        .steps-progress .bar .fill { height: 100%; width: 25%; background: #d92b2b; border-radius: 2px; transition: width 0.5s ease; }
+
+        .quick-replies { display: flex; flex-wrap: wrap; gap: 8px; margin: 6px 0 10px; flex-shrink: 0; }
+        .quick-replies.hidden { display: none; }
+        .quick-btn {
+            padding: 8px 16px; border: 1.5px solid #d92b2b; background: #fff; color: #d92b2b;
+            border-radius: 20px; font-size: 13px; font-weight: 500; cursor: pointer; transition: all 0.2s;
+        }
+        .quick-btn:hover { background: #d92b2b; color: #fff; }
+
+        .input-area { display: flex; align-items: center; gap: 10px; padding-top: 10px; border-top: 1px solid #e5e5ea; flex-shrink: 0; }
+        .input-area input { flex: 1; padding: 11px 16px; border: 1.5px solid #e5e5ea; border-radius: 24px; font-size: 15px; outline: none; transition: border 0.2s; }
+        .input-area input:focus { border-color: #d92b2b; }
+        .input-area input::placeholder { color: #8e8e93; font-size: 15px; }
+        .send-btn {
+            width: 42px; height: 42px; background: #d92b2b; color: #fff; border: none; border-radius: 50%;
+            font-size: 18px; cursor: pointer; transition: background 0.2s; display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+        }
+        .send-btn:hover { background: #b82222; }
+
+        .change-niche-btn { background: none; border: none; color: #d92b2b; font-size: 13px; font-weight: 500; cursor: pointer; padding: 4px 0; margin-bottom: 6px; text-decoration: underline; flex-shrink: 0; }
+        .change-niche-btn.hidden { display: none; }
+        .change-niche-btn:hover { color: #b82222; }
+
+        .double-tracks { display: flex; gap: 10px; margin-bottom: 12px; flex-wrap: wrap; }
+        .track-btn {
+            flex: 1; min-width: 120px; padding: 12px; border: 2px solid #e5e5ea; border-radius: 14px;
+            background: #fff; cursor: pointer; text-align: center; transition: all 0.2s; font-weight: 500; font-size: 14px;
+        }
+        .track-btn:hover { border-color: #d92b2b; background: #fdf3f3; }
+        .track-btn.selected { border-color: #d92b2b; background: #fdf3f3; box-shadow: 0 0 0 3px rgba(217, 43, 43, 0.15); }
+        .track-btn .icon { display: block; font-size: 28px; margin-bottom: 4px; }
+        .track-btn .sub { font-size: 11px; color: #6c6c70; font-weight: 400; }
+        .track-btn.hidden { display: none; }
+
+        .product-card {
+            background: #f8f8fa; border-radius: 12px; padding: 12px 14px; margin: 6px 0;
+            border-left: 4px solid #d92b2b;
+        }
+        .product-card .name { font-weight: 600; font-size: 14px; color: #1a1a1a; }
+        .product-card .desc { font-size: 13px; color: #6c6c70; margin-top: 2px; }
+
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+        @media (max-width: 430px) {
+            .iphone { width: 100%; height: 100vh; max-height: 844px; border-radius: 0; padding: 8px; box-shadow: none; }
+            .screen { border-radius: 0; padding: 8px 12px 6px; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="iphone">
+    <div class="screen">
+        <div class="status-bar"><span>9:41</span><div class="status-icons">📶 📶 🔋</div></div>
+
+        <div class="header">
+            <div class="header-left">
+                <div class="app-icon"><img src="logo.png" alt="Вайби"></div>
+                <div class="app-title-wrapper">
+                    <span class="app-title">Вайби</span>
+                    <span class="app-subtitle">от создателей Persona3</span>
+                </div>
+            </div>
+            <div class="header-right"><span>⋯</span></div>
+        </div>
+
+        <div class="content" id="content">
+            <div class="style-section" id="styleSection">
+                <div class="bot-message">
+                    <strong>Привет!</strong> Я Вайби — твой AI-наставник в бизнесе.<br>
+                    Выбери стиль общения, который тебе комфортен:
+                </div>
+                <div class="style-cards">
+                    <div class="style-card" data-style="business" onclick="selectStyle(this)">
+                        <span class="style-icon">📊</span>
+                        <div class="style-info"><div class="style-name">По делу</div><div class="style-desc">Коротко, сухо, только факты</div></div>
+                        <div class="style-check">✓</div>
+                    </div>
+                    <div class="style-card" data-style="care" onclick="selectStyle(this)">
+                        <span class="style-icon">💛</span>
+                        <div class="style-info"><div class="style-name">С заботой</div><div class="style-desc">Мягко, поддерживающе, с эмодзи</div></div>
+                        <div class="style-check">✓</div>
+                    </div>
+                    <div class="style-card" data-style="friend" onclick="selectStyle(this)">
+                        <span class="style-icon">🤙</span>
+                        <div class="style-info"><div class="style-name">По-дружески</div><div class="style-desc">Неформально, с юмором, как старший друг</div></div>
+                        <div class="style-check">✓</div>
+                    </div>
+                </div>
+                <button class="btn-continue" onclick="startChat()">Продолжить →</button>
+            </div>
+
+            <div class="chat-area" id="chatArea">
+                <div class="steps-progress">
+                    <span id="stepLabel">Шаг 1 из 4: Выбор ниши</span>
+                    <div class="bar"><div class="fill" id="stepFill" style="width: 25%;"></div></div>
+                </div>
+
+                <div class="chat-messages" id="chatMessages">
+                    <div class="chat-message bot">
+                        <div class="chat-bubble" id="firstMessage">
+                            <strong>Привет!</strong> Я Вайби — твой AI-наставник.<br><br>
+                            Давай помогу тебе открыть бизнес.<br><br>
+                            <strong>Какой у тебя запрос?</strong>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="double-tracks" id="trackSelector">
+                    <div class="track-btn" onclick="selectTrack('franchise')">
+                        <span class="icon">🤔</span>
+                        Не знаю, что открыть
+                        <div class="sub">Подберу бизнес-идею</div>
+                    </div>
+                    <div class="track-btn" onclick="selectTrack('navigator')">
+                        <span class="icon">🚀</span>
+                        У меня есть идея
+                        <div class="sub">Помоги запуститься</div>
+                    </div>
+                </div>
+
+                <div class="quick-replies hidden" id="quickReplies">
+                    <button class="quick-btn" onclick="selectNiche('beauty')">💅 Красота</button>
+                    <button class="quick-btn" onclick="selectNiche('horeca')">☕ HoReCa</button>
+                    <button class="quick-btn" onclick="selectNiche('trade')">📦 Торговля</button>
+                    <button class="quick-btn" onclick="selectNiche('other')">🤔 Другое</button>
+                </div>
+
+                <button class="change-niche-btn hidden" id="changeNicheBtn" onclick="resetNiche()">🔄 Выбрать другую нишу</button>
+
+                <div class="input-area">
+                    <input type="text" id="chatInput" placeholder="Написать сообщение..." onkeydown="if(event.key==='Enter') sendMessage()">
+                    <button class="send-btn" onclick="sendMessage()">➤</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// ================================================================
+// ПАМЯТЬ
+// ================================================================
+const memory = {
+    style: null,
+    track: null,
+    niche: null,
+    step: 0,
+    userName: null,
+    products: [],
+    history: []
+};
+
+// ================================================================
+// ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ
+// ================================================================
+function getNicheName(niche) {
+    const map = { 'beauty': 'салон маникюра', 'horeca': 'кафе', 'trade': 'интернет-магазин', 'other': 'бизнес' };
+    return map[niche] || 'бизнес';
+}
+
+function getNicheEmoji(niche) {
+    const map = { 'beauty': '💅', 'horeca': '☕', 'trade': '📦', 'other': '🤔' };
+    return map[niche] || '💡';
+}
+
+function getNicheDisplay(niche) {
+    const map = {
+        'beauty': 'Красота и здоровье (салон маникюра)',
+        'horeca': 'Кафе или ресторан',
+        'trade': 'Интернет-магазин',
+        'other': 'Другое'
+    };
+    return map[niche] || 'Другое';
+}
+
+function addMessage(type, text) {
+    const container = document.getElementById('chatMessages');
+    const msg = document.createElement('div');
+    msg.className = 'chat-message ' + type;
+    msg.innerHTML = `<div class="chat-bubble">${text.replace(/\n/g, '<br>')}</div>`;
+    container.appendChild(msg);
+    container.scrollTop = container.scrollHeight;
+    memory.history.push({ type, text });
+    return msg;
+}
+
+function addUserMessage(text) {
+    const container = document.getElementById('chatMessages');
+    const msg = document.createElement('div');
+    msg.className = 'chat-message user';
+    msg.innerHTML = `<div class="chat-bubble">${text}</div>`;
+    container.appendChild(msg);
+    container.scrollTop = container.scrollHeight;
+    memory.history.push({ type: 'user', text });
+}
+
+function updateProgress() {
+    const fill = document.getElementById('stepFill');
+    const steps = [0, 25, 50, 75, 100];
+    fill.style.width = steps[memory.step] + '%';
+    const label = document.getElementById('stepLabel');
+    const names = ['Выбор ниши', 'Регистрация ИП', 'Открытие счёта', 'Подключение СБП', 'Первый платёж'];
+    label.textContent = `Шаг ${Math.min(memory.step+1, 4)} из 4: ${names[Math.min(memory.step, 4)]}`;
+}
+
+// ================================================================
+// ВЫБОР СТИЛЯ
+// ================================================================
+function selectStyle(el) {
+    document.querySelectorAll('.style-card').forEach(c => c.classList.remove('selected'));
+    el.classList.add('selected');
+    memory.style = el.dataset.style;
+}
+
+function startChat() {
+    if (!memory.style) {
+        alert('Выбери стиль общения, чтобы продолжить!');
+        return;
+    }
+    document.getElementById('styleSection').style.display = 'none';
+    document.getElementById('chatArea').classList.add('active');
+
+    let greet = '';
+    if (memory.style === 'business') greet = 'Буду краток и по делу. Готов помочь!';
+    else if (memory.style === 'care') greet = 'Буду мягко направлять и поддерживать. Ты справишься! ❤️';
+    else greet = 'Будем общаться по-дружески и с юмором! Погнали 🤘';
+
+    const firstMsg = document.getElementById('firstMessage');
+    if (firstMsg) {
+        firstMsg.innerHTML = `<strong>Привет!</strong> Я Вайби — твой AI-наставник.<br><br>${greet}<br><br><strong>Какой у тебя запрос?</strong>`;
+    }
+}
+
+// ================================================================
+// ВЫБОР ТРЕКА
+// ================================================================
+function selectTrack(track) {
+    if (memory.track) return;
+    memory.track = track;
+    document.querySelectorAll('.track-btn').forEach(b => b.classList.add('hidden'));
+
+    let msg = '';
+    if (track === 'franchise') {
+        if (memory.style === 'business') {
+            msg = `🤔 Отлично! Я помогу тебе выбрать бизнес-идею.<br><br>Давай начнём с квиза. <strong>В какой сфере тебе было бы интересно работать?</strong><br><br>💡 Альфа-Банк уже помогает открывать франшизы через <strong>Платформу 360°</strong> — там можно найти Varka, Пон-Пушка и другие проверенные варианты.<br><br>⬇️ Выбери вариант ниже, и я подберу для тебя лучшие предложения.`;
+        } else if (memory.style === 'care') {
+            msg = `🤔 Отлично! Я помогу тебе выбрать бизнес-идею 😊<br><br>Давай начнём с квиза. <strong>В какой сфере тебе было бы интересно работать?</strong><br><br>💡 Альфа-Банк уже помогает открывать франшизы через <strong>Платформу 360°</strong> — там можно найти Varka, Пон-Пушка и другие проверенные варианты.<br><br>⬇️ Выбери вариант ниже, и я подберу для тебя лучшие предложения ❤️`;
+        } else {
+            msg = `🤔 Отлично! Я помогу тебе выбрать бизнес-идею, бро 🤘<br><br>Давай начнём с квиза. <strong>В какой сфере тебе было бы интересно работать?</strong><br><br>💡 Альфа-Банк уже помогает открывать франшизы через <strong>Платформу 360°</strong> — там можно найти Varka, Пон-Пушка и другие проверенные варианты.<br><br>⬇️ Выбери вариант ниже, и я подберу для тебя лучшие предложения 🔥`;
+        }
+        addMessage('bot', msg);
+    } else {
+        if (memory.style === 'business') {
+            msg = `🚀 Круто! Ты уже знаешь, чем хочешь заниматься.<br><br>Давай я помогу тебе запуститься.<br><br><strong>В какой сфере ты хочешь открыть бизнес?</strong><br><br>⬇️ Выбери вариант ниже, и я построю пошаговый план.`;
+        } else if (memory.style === 'care') {
+            msg = `🚀 Круто! Ты уже знаешь, чем хочешь заниматься 😊<br><br>Давай я помогу тебе запуститься.<br><br><strong>В какой сфере ты хочешь открыть бизнес?</strong><br><br>⬇️ Выбери вариант ниже, и я построю пошаговый план ❤️`;
+        } else {
+            msg = `🚀 Круто! Ты уже знаешь, чем хочешь заниматься, бро! 🤘<br><br>Давай я помогу тебе запуститься.<br><br><strong>В какой сфере ты хочешь открыть бизнес?</strong><br><br>⬇️ Выбери вариант ниже, и я построю пошаговый план 🔥`;
+        }
+        addMessage('bot', msg);
+    }
+
+    document.getElementById('quickReplies').classList.remove('hidden');
+}
+
+// ================================================================
+// СБРОС НИШИ
+// ================================================================
+function resetNiche() {
+    memory.niche = null;
+    memory.step = 0;
+    memory.track = null;
+
+    document.getElementById('quickReplies').classList.add('hidden');
+    document.getElementById('changeNicheBtn').classList.add('hidden');
+
+    document.querySelectorAll('.track-btn').forEach(b => b.classList.remove('hidden'));
+
+    const container = document.getElementById('chatMessages');
+    while (container.children.length > 1) {
+        container.removeChild(container.lastChild);
+    }
+
+    const firstMsg = document.getElementById('firstMessage');
+    if (firstMsg) {
+        firstMsg.innerHTML = `<strong>Привет!</strong> Я Вайби — твой AI-наставник.<br><br>Давай помогу тебе открыть бизнес.<br><br><strong>Какой у тебя запрос?</strong>`;
+    }
+
+    updateProgress();
+}
+
+// ================================================================
+// ВЫБОР НИШИ
+// ================================================================
+function selectNiche(niche) {
+    if (memory.niche) return;
+    if (!memory.track) {
+        addMessage('bot', 'Сначала выбери, что тебе нужно: "Не знаю, что открыть" или "У меня есть идея" 😊');
+        return;
+    }
+
+    memory.niche = niche;
+    const display = getNicheDisplay(niche);
+    addUserMessage(display);
+
+    document.getElementById('quickReplies').classList.add('hidden');
+    document.getElementById('changeNicheBtn').classList.remove('hidden');
+    memory.step = 1;
+    updateProgress();
+
+    const nicheName = getNicheName(niche);
+    const emoji = getNicheEmoji(niche);
+    const track = memory.track;
+
+    setTimeout(() => {
+        let msg = '';
+        if (track === 'franchise') {
+            if (memory.style === 'business') {
+                msg = `${emoji} По вашим критериям подходит <strong>франшиза Varka</strong> (кофейня) и <strong>Пон-Пушка</strong> (пончики).<br><br>📍 Обе доступны на <strong>Платформе 360°</strong> Альфа-Банка.<br><br>💰 Вход: от 300 000 ₽.<br><br>📌 <strong>План действий:</strong><br>1️⃣ Подать заявку на Платформе 360°<br>2️⃣ Получить одобрение<br>3️⃣ Открыть бизнес<br><br>Напиши "План" — покажу подробно.<br>Напиши "Кредит" — расскажу про финансирование.`;
+            } else if (memory.style === 'care') {
+                msg = `${emoji} Я нашла для тебя отличные варианты! 😊<br><br>✨ <strong>Varka</strong> — уютная кофейня<br>✨ <strong>Пон-Пушка</strong> — пончиковая<br><br>Обе франшизы доступны на <strong>Платформе 360°</strong> Альфа-Банка. Вход — от 300 000 ₽, есть поддержка на всех этапах.<br><br>📌 <strong>План действий:</strong><br>1️⃣ Подай заявку на Платформе 360°<br>2️⃣ Получи одобрение<br>3️⃣ Открывай бизнес!<br><br>Напиши "План" — я покажу подробно ❤️`;
+            } else {
+                msg = `${emoji} Бро, я нашёл крутые варианты! 🤘<br><br>🔥 <strong>Varka</strong> — кофейня<br>🍩 <strong>Пон-Пушка</strong> — пончики<br><br>Обе на <strong>Платформе 360°</strong> Альфа-Банка. Вход от 300к, всё под ключ.<br><br>📌 <strong>План действий:</strong><br>1️⃣ Подай заявку на Платформе 360°<br>2️⃣ Получи одобрение<br>3️⃣ Открывай дело!<br><br>Напиши "План" — покажу подробно 🔥`;
+            }
+        } else {
+            if (memory.style === 'business') {
+                msg = `📌 <strong>Шаг 1: Зарегистрируй ИП для ${nicheName}.</strong><br>Нужны паспорт и ИНН. Займёт 5 минут через сайт ФНС.<br><br>📌 После регистрации напиши <strong>"Готово"</strong> — я покажу, как открыть счёт в Альфа-Банке.`;
+            } else if (memory.style === 'care') {
+                msg = `❤️ <strong>Шаг 1: Зарегистрировать ИП для ${nicheName}.</strong><br><br>Это проще, чем кажется! 😊 Нужны только паспорт и ИНН. Я помогу тебе заполнить заявление — это займёт 5 минут.<br><br>📌 Когда зарегистрируешься, напиши <strong>"Готово"</strong>, и мы перейдём к открытию счёта в Альфа-Банке 🌟`;
+            } else {
+                msg = `🤙 <strong>Шаг 1: ИП для ${nicheName}.</strong><br><br>Легко! Паспорт и ИНН — и за 5 минут всё готово через сайт ФНС.<br><br>📌 Напиши <strong>"Готово"</strong>, когда сделаешь, и я покажу, как открыть счёт 🔥`;
+            }
+        }
+        addMessage('bot', msg);
+    }, 800);
+}
+
+// ================================================================
+// ТОП-40 УМНЫХ ОТВЕТОВ НА ВОПРОСЫ
+// ================================================================
+function getSmartResponse(text) {
+    const lower = text.toLowerCase();
+
+    // ============================================================
+    // КАТЕГОРИЯ 1: ПРО СТАРТ И ИДЕЮ (1-8)
+    // ============================================================
+    if (lower.includes('с чего начать') || lower.includes('с чего начать бизнес') || lower.includes('с нуля')) {
+        if (memory.style === 'business') {
+            return `📌 Пошаговый план для старта:\n1️⃣ Выбрать нишу (пройти квиз)\n2️⃣ Зарегистрировать ИП (5 минут)\n3️⃣ Открыть счёт в Альфа-Банке\n4️⃣ Подключить СБП в MAX для приёма платежей\n5️⃣ Начать принимать первые платежи\n\nНапиши "План" для подробной инструкции.`;
+        } else if (memory.style === 'care') {
+            return `😊 Отличный вопрос! Начнём по порядку:\n\n1️⃣ Сначала выбери нишу — я помогу с квизом\n2️⃣ Зарегистрируй ИП — это просто и быстро\n3️⃣ Открой счёт в Альфа-Банке — всё онлайн\n4️⃣ Подключи СБП в MAX — принимай платежи без терминала\n5️⃣ Принимай первые платежи!\n\nНапиши "План", и я покажу каждый шаг подробно ❤️`;
+        } else {
+            return `🤙 Бро, начни с малого:\n\n1️⃣ Выбери нишу (я помогу)\n2️⃣ ИП — 5 минут на сайте ФНС\n3️⃣ Счёт в Альфе — онлайн\n4️⃣ СБП в MAX — приём платежей\n5️⃣ Первый платёж!\n\nНапиши "План" — разжую подробно 🔥`;
+        }
+    }
+
+    if (lower.includes('какую нишу выбрать') || lower.includes('какая ниша лучше') || lower.includes('что открыть')) {
+        return `📌 Я помогу тебе выбрать нишу! Пройди короткий квиз из 5 вопросов:\n\n1️⃣ Сколько денег готов вложить?\n2️⃣ В каком городе живёшь?\n3️⃣ Что тебе нравится делать?\n4️⃣ Есть ли опыт в этой сфере?\n5️⃣ Сколько времени готов уделять бизнесу?\n\nНапиши "Начать квиз", и я подберу для тебя 2–3 варианта с расчётом окупаемости!`;
+    }
+
+    if (lower.includes('ип или самозанятость') || lower.includes('что лучше ип или самозанятость')) {
+        if (memory.style === 'business') {
+            return `📌 Сравнение ИП и самозанятости:\n\n• Самозанятость: до 2,4 млн ₽/год, нельзя нанимать сотрудников, налог 4–6%\n• ИП: без ограничений, можно нанимать сотрудников, налог УСН 6% или 15%\n\n💡 Для старта с малым оборотом — самозанятость. Для роста и найма — ИП.\n\nНапиши "План" — помогу с выбором.`;
+        } else if (memory.style === 'care') {
+            return `😊 Хороший вопрос! Давай сравним:\n\n💛 Самозанятость: до 2,4 млн ₽ в год, налог 4–6%, нельзя нанимать сотрудников. Подходит для старта.\n💛 ИП: без ограничений, можно нанимать, налог 6% или 15%. Подходит для роста.\n\nНачни с самозанятости, а когда вырастешь — переходи на ИП. Я помогу с переходом ❤️`;
+        } else {
+            return `🤙 Сравниваю, бро:\n\n• Самозанятость: до 2,4 млн/год, налог 4–6%, без сотрудников\n• ИП: без лимитов, с сотрудниками, налог 6–15%\n\nСовет: начни с самозанятости, потом перейди на ИП. Напиши "План" — покажу как 🔥`;
+        }
+    }
+
+    if (lower.includes('сколько денег нужно') || lower.includes('сколько стоит открыть') || lower.includes('бюджет на старт')) {
+        return `💰 Примерные бюджеты на старт по нишам:\n\n• 💅 Бьюти (салон маникюра): 100–300 тыс. ₽\n• ☕ HoReCa (кафе): 300–700 тыс. ₽\n• 📦 Торговля (интернет-магазин): 50–200 тыс. ₽\n\nВ Альфа-Банке есть «Вайби-Кредит» до 200 000 ₽ без залога. Напиши "Кредит" для подробностей.`;
+    }
+
+    if (lower.includes('франшиза') || lower.includes('стоит ли брать франшизу') || lower.includes('что такое франшиза')) {
+        if (memory.style === 'business') {
+            return `📌 Франшиза — это готовая бизнес-модель с поддержкой.\n\n✅ Плюсы: готовая модель, бренд, поддержка\n❌ Минусы: роялти (ежемесячные платежи)\n\nВ Альфа-Банке на Платформе 360° есть Varka, Пон-Пушка и другие. Напиши "План" — покажу подробно.`;
+        } else if (memory.style === 'care') {
+            return `😊 Франшиза — это как готовый рецепт бизнеса!\n\n✨ Плюсы: всё готово, бренд работает, поддержка есть\n💔 Минусы: нужно платить роялти\n\nНа Платформе 360° Альфа-Банка можно найти Varka, Пон-Пушка и другие проверенные варианты. Напиши "План", и я покажу ❤️`;
+        } else {
+            return `🤙 Франшиза — готовая тема для бизнеса!\n\n✅ Плюсы: не надо ничего придумывать\n❌ Минусы: роялти\n\nНа Платформе 360° Альфы есть Varka, Пон-Пушка. Напиши "План" — покажу 🔥`;
+        }
+    }
+
+    if (lower.includes('можно ли без опыта') || lower.includes('без опыта бизнес')) {
+        if (memory.style === 'business') {
+            return `📌 Да, можно! Многие успешные предприниматели начинали с нуля.\n\nГлавное — желание и готовность учиться. «Вайби» проведёт по шагам, а Альфа-Банк даст поддержку.\n\nНапиши "План" — я покажу, с чего начать.`;
+        } else if (memory.style === 'care') {
+            return `😊 Конечно можно! Многие начинали с нуля и добились успеха.\n\nГлавное — желание и поддержка. Я проведу тебя по всем шагам, а Альфа-Банк поможет на старте ❤️\n\nНапиши "План", и начнём!`;
+        } else {
+            return `🤙 А то! Многие начинали с нуля.\n\nГлавное — желание и немного смелости. Я помогу на каждом шагу, а Альфа-Банк поддержит.\n\nНапиши "План" — и погнали 🔥`;
+        }
+    }
+
+    if (lower.includes('самый прибыльный бизнес') || lower.includes('какой бизнес прибыльный')) {
+        return `📌 По статистике, самые прибыльные ниши для молодых предпринимателей:\n\n1️⃣ Услуги красоты (бьюти) — 24%\n2️⃣ Кафе и рестораны (HoReCa) — 22%\n3️⃣ Онлайн-торговля — 27%\n4️⃣ Пункты выдачи заказов — 19%\n\nНо прибыль зависит от города, локации и подхода. Пройди квиз, я подберу оптимальный вариант.`;
+    }
+
+    if (lower.includes('страх') || lower.includes('боюсь') || lower.includes('не получится')) {
+        if (memory.style === 'business') {
+            return `📌 Страх — это нормально. 40% молодых предпринимателей испытывают страх неудачи.\n\nГлавное — начать с маленького шага. «Вайби» поддерживает на каждом этапе, а Альфа-Банк помогает минимизировать риски.\n\nНапиши "План" — я покажу, с чего начать без больших рисков.`;
+        } else if (memory.style === 'care') {
+            return `😊 Это нормально — бояться! Я здесь, чтобы поддержать тебя ❤️\n\n40% молодых предпринимателей испытывают страх. Но те, кто делает первый шаг, почти никогда не жалеют.\n\nНачни с малого — я буду рядом на каждом шагу. Напиши "План" 🌟`;
+        } else {
+            return `🤙 Не парься, бро! Страх — это нормально.\n\n40% новичков боятся, но те, кто начинает — не жалеют.\n\nНачни с маленького шага, я помогу. Напиши "План" 🚀`;
+        }
+    }
+
+    // ============================================================
+    // КАТЕГОРИЯ 2: ПРО РЕГИСТРАЦИЮ (9-16)
+    // ============================================================
+    if (lower.includes('как зарегистрировать ип') || lower.includes('регистрация ип')) {
+        return `📌 Как зарегистрировать ИП:\n\n1️⃣ Собрать документы: паспорт, ИНН\n2️⃣ Подать заявление через сайт ФНС\n3️⃣ Получить документы за 3 дня\n\n💡 В Альфа-Банке можно открыть счёт одновременно с регистрацией — всё онлайн.\n\nНапиши "План" для пошаговой инструкции.`;
+    }
+
+    if (lower.includes('оквэд') || lower.includes('как выбрать оквэд')) {
+        return `📌 ОКВЭД — код вида деятельности.\n\n• Для бьюти (салон маникюра): 96.02\n• Для кафе: 56.10\n• Для интернет-магазина: 47.91\n\n⚠️ Ошибка в ОКВЭД может стоить до 10 000 ₽ штрафа. Я помогу выбрать правильный!\n\nНапиши "План" для инструкции.`;
+    }
+
+    if (lower.includes('какие налоги') || lower.includes('налоги платить') || lower.includes('система налогообложения')) {
+        return `📌 Основные системы налогообложения:\n\n• УСН «Доходы» — 6% от выручки\n• УСН «Доходы минус расходы» — 15% от прибыли\n• НПД (самозанятость) — 4–6%\n\n💡 Для большинства стартапов подходит УСН 6%.\n\nНапиши "План" — я помогу выбрать оптимальный вариант.`;
+    }
+
+    if (lower.includes('сколько регистрируется ип') || lower.includes('как долго регистрируется ип')) {
+        return `📌 Сроки регистрации ИП:\n\n• Через сайт ФНС — 3 рабочих дня\n• Через приложение банка — 1 день\n\nВ Альфа-Банке можно открыть счёт и зарегистрировать ИП одновременно.\n\nНапиши "План" — покажу, как сделать это быстро.`;
+    }
+
+    if (lower.includes('что будет если не сдать отчетность') || lower.includes('отчетность') || lower.includes('штраф за отчетность')) {
+        return `⚠️ За непредоставление отчётности:\n\n• Штраф от 1 000 до 30 000 ₽\n• Блокировка расчётного счёта\n• Пени за каждый день просрочки\n\n💡 В «Альфа-Бухгалтерии» есть напоминания и автоматическая отправка отчётности.\n\nНапиши "Туториал" для инструкций.`;
+    }
+
+    if (lower.includes('нужен ли расчётный счёт') || lower.includes('открывать счёт') || lower.includes('зачем счёт')) {
+        return `📌 Расчётный счёт обязателен для ИП и ООО.\n\nЗачем:\n• Принимать безналичные платежи\n• Платить налоги и взносы\n• Получать кредиты и гранты\n\nВ Альфа-Банке можно открыть счёт онлайн за 10 минут.\n\nНапиши "План" — покажу, как открыть.`;
+    }
+
+    if (lower.includes('какие документы для счёта') || lower.includes('документы для открытия счёта')) {
+        return `📌 Для открытия счёта нужны:\n\n1️⃣ Паспорт\n2️⃣ ИНН\n3️⃣ Свидетельство о регистрации ИП\n4️⃣ Лицензия (для некоторых видов деятельности)\n\nВсе документы можно загрузить онлайн в приложении «Альфа-Бизнес».`;
+    }
+
+    if (lower.includes('как выбрать налоговый режим') || lower.includes('налоговый режим не знаю')) {
+        return `📌 Я помогу выбрать налоговый режим! \n\nПройди короткий опрос:\n1️⃣ Какой у тебя планируемый доход?\n2️⃣ Будут ли сотрудники?\n3️⃣ Есть ли расходы, которые можно подтвердить?\n\nНапиши "Начать", и я подберу лучший вариант для твоей ниши.`;
+    }
+
+    // ============================================================
+    // КАТЕГОРИЯ 3: ПРО ДЕНЬГИ И ПРОДУКТЫ (17-24)
+    // ============================================================
+    if (lower.includes('как принимать платежи') || lower.includes('принимать оплату') || lower.includes('платежи без терминала')) {
+        return `📌 Принимай платежи через СБП в MAX!\n\n✅ Без терминала — достаточно смартфона\n✅ Комиссия до 0,7%\n✅ Мгновенное зачисление\n\nПодключение через «Альфа-Бизнес Онлайн» за 2 минуты.\n\nНапиши "Туториал" для инструкции.`;
+    }
+
+    if (lower.includes('сбп или эквайринг') || lower.includes('чем отличается сбп от эквайринга')) {
+        return `📌 Сравнение СБП в MAX и эквайринга:\n\n🔹 СБП в MAX:\n• Комиссия до 0,7%\n• Без терминала\n• Мгновенное зачисление\n\n🔹 Торговый эквайринг:\n• Комиссия от 1,99%\n• Нужен терминал\n• Зачисление на следующий день\n\n💡 Для старта выгоднее СБП в MAX.`;
+    }
+
+    if (lower.includes('кредит без залога') || lower.includes('микрозайм') || lower.includes('вайби кредит')) {
+        return `💰 «Вайби-Кредит» — микрозайм до 200 000 ₽.\n\n✅ Без залога\n✅ AI-скоринг по данным из «Вайби»\n✅ Решение за 5 минут\n\n💡 Для молодых предпринимателей — специальные условия!\n\nНапиши "Кредит" для подробностей.`;
+    }
+
+    if (lower.includes('альфа-про') || lower.includes('что такое альфа-про') || lower.includes('подписка альфа-про')) {
+        return `📌 «Альфа-Про» — подписка для бизнеса.\n\n✅ ИИ-ассистенты «Нейроофис»\n✅ Юридическая поддержка\n✅ Проверка контрагентов\n✅ Мониторинг рисков\n\n💡 Для молодых предпринимателей — скидка 50% (550 ₽/мес.) на первый год!\n\nНапиши "Кредит" для подробностей.`;
+    }
+
+    if (lower.includes('рассрочка') || lower.includes('купить оборудование') || lower.includes('подели')) {
+        return `📌 BNPL-сервис «Подели» — рассрочка на оборудование.\n\n✅ Без первого взноса\n✅ До 1 года отсрочки\n✅ Без комиссии\n\n💡 Идеально для покупки оборудования для салона, кафе или интернет-магазина.\n\nНапиши "Кредит" для подробностей.`;
+    }
+
+    if (lower.includes('какая комиссия') || lower.includes('комиссия за платежи')) {
+        return `💰 Комиссии Альфа-Банка:\n\n• СБП в MAX — до 0,7%\n• Торговый эквайринг — от 1,99%\n• Интернет-эквайринг — от 2,6%\n\n💡 Самый выгодный на старте — СБП в MAX.\n\nНапиши "Туториал" для инструкций.`;
+    }
+
+    if (lower.includes('как быстро приходят деньги') || lower.includes('зачисление платежей')) {
+        return `📌 Скорость зачисления:\n\n• СБП в MAX — мгновенно\n• Торговый эквайринг — на следующий день\n• Интернет-эквайринг — от 1 до 3 дней\n\n💡 Для старта рекомендую СБП в MAX — деньги приходят сразу.`;
+    }
+
+    if (lower.includes('оплата по ссылке') || lower.includes('отправить ссылку на оплату')) {
+        return `📌 Да, можно принимать оплату по ссылке!\n\n🔹 Через СБП в MAX — отправляешь ссылку клиенту, он оплачивает\n🔹 Через интернет-эквайринг — ссылка на оплату на сайте\n\nНапиши "Туториал" — покажу, как настроить.`;
+    }
+
+    // ============================================================
+    // КАТЕГОРИЯ 4: ПРО МАРКЕТИНГ (25-30)
+    // ============================================================
+    if (lower.includes('как найти клиентов') || lower.includes('первые клиенты') || lower.includes('где брать клиентов')) {
+        return `📌 Как найти первых клиентов:\n\n1️⃣ Соцсети: Instagram, VK — публикуй свои работы\n2️⃣ Сарафан: проси друзей рассказать о тебе\n3️⃣ Акции: «Приведи друга — скидка 10%»\n4️⃣ СБП в MAX: быстрый приём платежей повышает доверие\n\n💡 Я могу сгенерировать готовые шаблоны постов!\n\nНапиши "Туториал" — покажу как.`;
+    }
+
+    if (lower.includes('как рассчитать цену') || lower.includes('ценообразование') || lower.includes('сколько брать за услугу')) {
+        return `📌 Формула цены:\n\n(Расходы + Желаемая прибыль) ÷ Количество клиентов = Цена\n\nПример для салона маникюра:\n• Аренда: 20 000 ₽\n• Материалы: 15 000 ₽\n• Зарплата: 30 000 ₽\n• Итого расходы: 65 000 ₽\n• Желаемая прибыль: 35 000 ₽\n• Итого: 100 000 ₽ ÷ 100 клиентов = 1 000 ₽ за услугу\n\nНапиши "План" — помогу рассчитать.`;
+    }
+
+    if (lower.includes('где рекламироваться') || lower.includes('реклама в соцсетях') || lower.includes('соцсети или маркетплейсы')) {
+        return `📌 Где рекламироваться:\n\n• Для бьюти: Instagram, VK — показывай свои работы\n• Для товаров: маркетплейсы (Ozon, Wildberries)\n• Для HoReCa: Яндекс.Еда, Delivery Club, соцсети\n\n💡 В «Нейроофисе» Альфа-Банка есть ИИ-помощник для создания рекламных постов.`;
+    }
+
+    if (lower.includes('какую рекламу запускать') || lower.includes('таргетинг') || lower.includes('рекламная стратегия')) {
+        return `📌 Рекомендации по рекламе:\n\n1️⃣ Таргетинг на локальную аудиторию (город, район)\n2️⃣ Короткие видео-обзоры услуг\n3️⃣ Отзывы клиентов — самый мощный инструмент\n4️⃣ Акции и скидки для новых клиентов\n\n💡 Используй ИИ-помощника «Нейроофис» для создания контента.\n\nНапиши "Туториал" — покажу как.`;
+    }
+
+    if (lower.includes('как вернуть клиентов') || lower.includes('повторные клиенты') || lower.includes('лояльность')) {
+        return `📌 Как сделать клиентов постоянными:\n\n1️⃣ Скидка за повторный визит\n2️⃣ Бонусы за отзывы\n3️⃣ Напоминания о записи\n4️⃣ Сервис чаевых «Нет монет» — повышает лояльность\n\n💡 Веди базу клиентов в «Альфа-Бухгалтерии».\n\nНапиши "Туториал" для инструкций.`;
+    }
+
+    if (lower.includes('как работать с отзывами') || lower.includes('отзывы клиентов')) {
+        return `📌 Как работать с отзывами:\n\n1️⃣ Проси клиентов оставлять отзывы после каждой услуги\n2️⃣ Отвечай на все отзывы — и на позитивные, и на негативные\n3️⃣ Негатив превращай в конструктив — вежливо предложи решение\n\n💡 Хорошие отзывы повышают доверие и привлекают новых клиентов.`;
+    }
+
+    // ============================================================
+    // КАТЕГОРИЯ 5: ПРО ПРОБЛЕМЫ (31-35)
+    // ============================================================
+    if (lower.includes('нет клиентов') || lower.includes('что делать если нет клиентов') || lower.includes('клиентов мало')) {
+        return `📌 Что делать, если нет клиентов:\n\n1️⃣ Проверь цену — возможно, она слишком высокая\n2️⃣ Проверь качество — клиенты должны быть довольны\n3️⃣ Запусти акцию — скидка 20% на первый визит\n4️⃣ Подключи СБП в MAX — удобный приём платежей повышает доверие\n\n💡 «Нет монет» — сервис чаевых для дополнительного дохода.\n\nНапиши "План" — я помогу.`;
+    }
+
+    if (lower.includes('как масштабировать') || lower.includes('масштабирование') || lower.includes('расширить бизнес')) {
+        return `📌 Как масштабировать бизнес:\n\n1️⃣ Перейди с самозанятости на ИП\n2️⃣ Найми сотрудников\n3️⃣ Подключи торговый эквайринг для офлайн-точек\n4️⃣ Открой новые точки\n\n💡 В Альфа-Банке есть кредиты на развитие бизнеса.\n\nНапиши "Кредит" для подробностей.`;
+    }
+
+    if (lower.includes('как нанять сотрудника') || lower.includes('найм сотрудников') || lower.includes('первый сотрудник')) {
+        return `📌 Как нанять первого сотрудника:\n\n1️⃣ Зарегистрируйся как работодатель\n2️⃣ Заключи трудовой договор\n3️⃣ Плати налоги за сотрудника\n\n💡 В Альфа-Банке есть зарплатный проект для малого бизнеса.\n\nНапиши "План" — я покажу пошагово.`;
+    }
+
+    if (lower.includes('доход упал') || lower.includes('прибыль упала') || lower.includes('денег мало')) {
+        return `📌 Что делать, если доход упал:\n\n1️⃣ Проанализируй расходы — что можно сократить?\n2️⃣ Запусти акцию для привлечения клиентов\n3️⃣ Подключи дополнительные каналы продаж\n4️⃣ Обратись за кредитной поддержкой в Альфа-Банк\n\n💡 «Альфа-Бухгалтерия» поможет проанализировать финансы.\n\nНапиши "Кредит" для подробностей.`;
+    }
+
+    if (lower.includes('как понять что бизнес прибыльный') || lower.includes('прибыль бизнеса')) {
+        return `📌 Как понять, что бизнес приносит прибыль:\n\nВыручка — Расходы = Прибыль\n\n• Если > 0 — бизнес прибыльный\n• Если = 0 — выходишь в ноль\n• Если < 0 — бизнес убыточный\n\n💡 Веди учёт в «Альфа-Бухгалтерии» — она автоматически считает финансы.\n\nНапиши "Туториал" для инструкций.`;
+    }
+
+    // ============================================================
+    // КАТЕГОРИЯ 6: ПРО СЕРВИСЫ АЛЬФА-БАНКА (36-40)
+    // ============================================================
+    if (lower.includes('альфа-бухгалтерия') || lower.includes('бухгалтерия') || lower.includes('учёт')) {
+        return `📌 «Альфа-Бухгалтерия» — автоматический учёт для бизнеса.\n\n✅ Автоматический учёт доходов и расходов\n✅ Расчёт налогов\n✅ Напоминания о сроках\n✅ Отправка отчётности в ФНС\n\n💡 Идеально для тех, кто не хочет разбираться в бухгалтерии.\n\nНапиши "Туториал" — покажу как.`;
+    }
+
+    if (lower.includes('как подключить эквайринг')) {
+        return `📌 Как подключить эквайринг:\n\n1️⃣ Зайди в «Альфа-Бизнес Онлайн»\n2️⃣ Найди раздел «Эквайринг»\n3️⃣ Заполни заявку\n4️⃣ Получи терминал за 1 день\n\n💡 Для старта рекомендую СБП в MAX — без терминала и дешевле.\n\nНапиши "Туториал" для инструкций.`;
+    }
+
+    if (lower.includes('платформа 360') || lower.includes('что такое платформа 360')) {
+        return `📌 Платформа 360° — это сервис Альфа-Банка для открытия бизнеса.\n\n✅ Помогает с регистрацией бизнеса\n✅ Подбор франшиз (Varka, Пон-Пушка)\n✅ Получение кредита\n✅ Услуги партнёров (бухгалтерия, юристы)\n\nНапиши "План" — я покажу подробно.`;
+    }
+
+    if (lower.includes('какие сервисы') || lower.includes('сервисы альфа-банка')) {
+        return `📌 Все сервисы Альфа-Банка для бизнеса:\n\n1️⃣ СБП в MAX — приём платежей без терминала\n2️⃣ Торговый эквайринг — терминал для офлайн-точек\n3️⃣ Интернет-эквайринг — для сайтов\n4️⃣ «Альфа-Про» — ИИ-помощники, юристы, проверка контрагентов\n5️⃣ «Подели» — BNPL-рассрочка на оборудование\n6️⃣ «Нет монет» — сервис чаевых\n7️⃣ «Альфа-Бухгалтерия» — учёт и налоги\n8️⃣ Зарплатный проект\n9️⃣ Кредиты и гранты\n\nНапиши "Туториал" — покажу всё подробно.`;
+    }
+
+    if (lower.includes('поддержка') || lower.includes('помощь') || lower.includes('куда писать') || lower.includes('написать в поддержку')) {
+        return `📌 Как связаться с поддержкой Альфа-Банка:\n\n1️⃣ Чат в приложении «Альфа-Бизнес»\n2️⃣ Чат в мессенджере MAX\n3️⃣ По телефону 8 800 100 77 77\n\n💡 Я тоже могу помочь с базовыми вопросами! Просто напиши мне 😊`;
+    }
+
+    // ============================================================
+    // СТАРЫЕ КОМАНДЫ (совместимость)
+    // ============================================================
+    if (lower.includes('как лучше') || lower.includes('как сделать') || lower.includes('совет')) {
+        if (memory.style === 'business') {
+            return `📌 Совет: начни с регистрации ИП — это основа. Параллельно изучи СБП в MAX (комиссия до 0,7%) — самый выгодный способ принимать платежи на старте. Если нужен подробный план — напиши "План".`;
+        } else if (memory.style === 'care') {
+            return `😊 Хороший вопрос! Я бы посоветовала начать с регистрации ИП — это фундамент. А для приёма платежей советую СБП в MAX — комиссия до 0,7%, терминал не нужен. Всё просто и выгодно ❤️\n\nНапиши "План", если хочешь подробный разбор.`;
+        } else {
+            return `🤙 Бро, слушай: сначала ИП (это база), потом СБП в MAX (комиссия до 0,7%, терминал не нужен). Это самый выгодный путь на старте. Если надо — напиши "План", я разжую подробно 🔥`;
+        }
+    }
+
+    if (lower.includes('выгодно') || lower.includes('сколько стоит') || lower.includes('цена') || lower.includes('комисс')) {
+        if (memory.style === 'business') {
+            return `💰 Тарифы Альфа-Банка:\n• СБП в MAX — до 0,7%\n• Торговый эквайринг — от 1,99%\n• Интернет-эквайринг — от 2,6%\n• «Альфа-Про» — 1 100 ₽/мес.\n\nСамый выгодный на старте — СБП в MAX. Напиши "Кредит" для финансовых продуктов.`;
+        } else if (memory.style === 'care') {
+            return `💰 Тарифы Альфа-Банка, дорогой 😊:\n• СБП в MAX — до 0,7% (самый выгодный на старте!)\n• Торговый эквайринг — от 1,99%\n• Интернет-эквайринг — от 2,6%\n• «Альфа-Про» — 1 100 ₽/мес.\n\nНапиши "Кредит", если хочешь узнать про финансирование ❤️`;
+        } else {
+            return `💰 Тарифы Альфы, бро:\n• СБП в MAX — до 0,7% (самый выгодный на старте!)\n• Торговый эквайринг — от 1,99%\n• Интернет-эквайринг — от 2,6%\n• «Альфа-Про» — 1 100 ₽/мес.\n\nНапиши "Кредит", если надо деньги 🔥`;
+        }
+    }
+
+    if (lower.includes('что дальше') || lower.includes('следующий шаг') || lower.includes('что делат')) {
+        const step = memory.step;
+        if (step === 0) {
+            return '📌 Сейчас нужно выбрать нишу. Нажми на одну из кнопок выше: "Красота", "HoReCa", "Торговля" или "Другое".';
+        } else if (step === 1) {
+            return '📌 Ты на шаге "Регистрация ИП". Зарегистрируй ИП через сайт ФНС, а потом напиши "Готово" — я покажу, как открыть счёт.';
+        } else if (step === 2) {
+            return '📌 Ты на шаге "Открытие счёта". Открой счёт в Альфа-Банке через приложение «Альфа-Бизнес», потом напиши "Готово".';
+        } else if (step === 3) {
+            return '📌 Ты на шаге "Подключение СБП в MAX". Подключи СБП через «Альфа-Бизнес Онлайн», потом напиши "Готово".';
+        } else if (step === 4) {
+            return '🎉 Ты уже прошёл все шаги! Бизнес открыт! Могу помочь с туториалами ("Туториал") или финансами ("Кредит").';
+        }
+    }
+
+    if (lower.includes('помоги') || lower.includes('не понимаю') || lower.includes('запутался')) {
+        if (memory.style === 'business') {
+            return `📌 Я здесь, чтобы помочь. Давай по порядку:\n1. Напиши "План" — я покажу подробный план действий\n2. Напиши "Туториал" — я покажу инструкции по сервисам\n3. Если ты на шаге — напиши "Готово", чтобы продолжить\n\nВсё будет хорошо!`;
+        } else if (memory.style === 'care') {
+            return `😊 Не переживай! Я здесь, чтобы помочь тебе ❤️\n\nДавай по порядку:\n1. Напиши "План" — я покажу подробный план\n2. Напиши "Туториал" — я покажу инструкции\n3. Если ты на шаге — напиши "Готово", чтобы продолжить\n\nВсё будет хорошо, я рядом! 🌟`;
+        } else {
+            return `🤙 Не парься, бро! Я здесь, чтобы помочь.\n\nДавай так:\n1. "План" — подробный план\n2. "Туториал" — инструкции\n3. "Готово" — если прошёл шаг\n\nВсё будет норм! 🚀`;
+        }
+    }
+
+    return null;
+}
+
+// ================================================================
+// ОТПРАВКА СООБЩЕНИЯ
+// ================================================================
+function sendMessage() {
+    const input = document.getElementById('chatInput');
+    const text = input.value.trim();
+    if (!text) return;
+    addUserMessage(text);
+    input.value = '';
+
+    const lower = text.toLowerCase();
+    const style = memory.style;
+    const track = memory.track;
+    const step = memory.step;
+
+    setTimeout(() => {
+        // ============================================================
+        // ТОП-40 УМНЫХ ОТВЕТОВ НА ВОПРОСЫ
+        // ============================================================
+        const smartResponse = getSmartResponse(text);
+        if (smartResponse) {
+            addMessage('bot', smartResponse);
+            return;
+        }
+
+        // ============================================================
+        // КОМАНДА: ПЛАН (РАБОТАЕТ ДЛЯ ОБОИХ ТРЕКОВ!)
+        // ============================================================
+        if (lower.includes('план')) {
+            if (track === 'franchise') {
+                let msg = '';
+                if (style === 'business') {
+                    msg = `📌 <strong>Подробный план по франшизе:</strong><br><br>1️⃣ Зайти на <strong>Платформу 360°</strong> Альфа-Банка<br>2️⃣ Выбрать франшизу (Varka / Пон-Пушка)<br>3️⃣ Подать заявку<br>4️⃣ Получить одобрение и кредит<br>5️⃣ Открыть бизнес<br><br>💡 У Альфа-Банка есть специальные условия для молодых предпринимателей.<br><br>Напиши "Кредит" для подробностей.<br>Напиши "Туториал" для инструкций.`;
+                } else if (style === 'care') {
+                    msg = `📌 <strong>Подробный план по франшизе</strong> 😊<br><br>1️⃣ Зайди на <strong>Платформу 360°</strong> Альфа-Банка<br>2️⃣ Выбери франшизу — Varka или Пон-Пушка<br>3️⃣ Подай заявку<br>4️⃣ Получи одобрение и кредит<br>5️⃣ Открывай бизнес!<br><br>💡 У Альфа-Банка есть специальные условия для молодых предпринимателей.<br><br>Напиши "Кредит" — я расскажу подробно ❤️`;
+                } else {
+                    msg = `📌 <strong>План по франшизе</strong> 🔥<br><br>1️⃣ Зайди на <strong>Платформу 360°</strong> Альфа-Банка<br>2️⃣ Выбери Varka или Пон-Пушка<br>3️⃣ Подай заявку<br>4️⃣ Получи одобрение и кредит<br>5️⃣ Открывай дело!<br><br>💡 У Альфы есть спецусловия для молодых.<br><br>Напиши "Кредит" — расскажу 🔥`;
+                }
+                addMessage('bot', msg);
+                return;
+            }
+
+            if (track === 'navigator' && memory.niche) {
+                const nicheName = getNicheName(memory.niche);
+                let msg = '';
+                if (style === 'business') {
+                    msg = `📌 <strong>Пошаговый план для ${nicheName}:</strong><br><br>1️⃣ Зарегистрировать ИП (5 минут через сайт ФНС)<br>2️⃣ Открыть счёт в Альфа-Банке (онлайн, 10 минут)<br>3️⃣ Подключить СБП в MAX (без терминала, комиссия до 0,7%)<br>4️⃣ Принять первый платёж<br><br>💡 Ты на шаге ${Math.min(step+1, 4)} из 4.<br><br>Напиши "Готово", чтобы перейти к следующему шагу.`;
+                } else if (style === 'care') {
+                    msg = `📌 <strong>Пошаговый план для ${nicheName}</strong> ❤️<br><br>1️⃣ Зарегистрировать ИП (это просто! 5 минут)<br>2️⃣ Открыть счёт в Альфа-Банке (онлайн, 10 минут)<br>3️⃣ Подключить СБП в MAX (без терминала, комиссия до 0,7%)<br>4️⃣ Принять первый платёж! 🎉<br><br>💡 Ты на шаге ${Math.min(step+1, 4)} из 4.<br><br>Напиши "Готово", чтобы продолжить 😊`;
+                } else {
+                    msg = `📌 <strong>Пошаговый план для ${nicheName}</strong> 🔥<br><br>1️⃣ ИП (5 минут)<br>2️⃣ Счёт в Альфе (онлайн, 10 минут)<br>3️⃣ СБП в MAX (без терминала, до 0,7%)<br>4️⃣ Первый платёж! 🎉<br><br>💡 Ты на шаге ${Math.min(step+1, 4)} из 4.<br><br>Напиши "Готово", чтобы двигаться дальше 🚀`;
+                }
+                addMessage('bot', msg);
+                return;
+            }
+
+            if (track === 'navigator' && !memory.niche) {
+                addMessage('bot', 'Сначала выбери нишу из кнопок выше: "Красота", "HoReCa", "Торговля" или "Другое" 😊');
+                return;
+            }
+        }
+
+        // ============================================================
+        // КОМАНДА: КРЕДИТ
+        // ============================================================
+        if (lower.includes('кредит') || lower.includes('финанс') || lower.includes('деньг')) {
+            let msg = '';
+            if (style === 'business') {
+                msg = `💰 <strong>Финансовые продукты Альфа-Банка для молодых предпринимателей</strong><br><br>📌 <strong>«Вайби-Кредит»</strong> — микрозайм до 200 000 ₽<br>• Без залога<br>• AI-скоринг по данным из «Вайби»<br>• Решение за 5 минут<br><br>📌 <strong>BNPL-сервис «Подели»</strong><br>• Рассрочка на оборудование без первого взноса<br>• До 1 года отсрочки<br><br>📌 <strong>Универсальный кредитный лимит</strong><br>• От 50 000 ₽ на старте<br>• Автоматическое увеличение при росте оборота<br><br>Напиши "Туториал" — покажу, как это работает.`;
+            } else if (style === 'care') {
+                msg = `💰 <strong>Финансовые продукты Альфа-Банка для молодых предпринимателей</strong> ❤️<br><br>📌 <strong>«Вайби-Кредит»</strong> — микрозайм до 200 000 ₽<br>• Без залога<br>• AI-скоринг по данным из «Вайби»<br>• Решение за 5 минут<br><br>📌 <strong>«Подели»</strong> — рассрочка на оборудование<br>• Без первого взноса<br>• До 1 года отсрочки<br><br>📌 <strong>Универсальный кредитный лимит</strong><br>• От 50 000 ₽ на старте<br>• Автоматическое увеличение<br><br>Напиши "Туториал" — я покажу 😊`;
+            } else {
+                msg = `💰 <strong>Финансовые продукты Альфа-Банка для молодых предпринимателей</strong> 🔥<br><br>📌 <strong>«Вайби-Кредит»</strong> — микрозайм до 200к<br>• Без залога<br>• AI-скоринг от «Вайби»<br>• Решение за 5 минут<br><br>📌 <strong>«Подели»</strong> — рассрочка на оборудование<br>• Без первого взноса<br>• До 1 года<br><br>📌 <strong>Универсальный кредитный лимит</strong><br>• От 50к на старте<br>• Автоматический рост<br><br>Напиши "Туториал" — покажу 🔥`;
+            }
+            addMessage('bot', msg);
+            return;
+        }
+
+        // ============================================================
+        // КОМАНДА: ТУТОРИАЛ
+        // ============================================================
+        if (lower.includes('туториал') || lower.includes('инструкц') || lower.includes('видео')) {
+            let msg = '';
+            if (style === 'business') {
+                msg = `📌 <strong>Туториалы по сервисам Альфа-Банка</strong><br><br><div class="product-card"><div class="name">1️⃣ СБП в MAX</div><div class="desc">Приём платежей без терминала — до 0,7%. Видео в «Альфа-Бизнес»</div></div><div class="product-card"><div class="name">2️⃣ Торговый эквайринг</div><div class="desc">Терминал для офлайн-точек — от 1,99%. Раздел «Эквайринг»</div></div><div class="product-card"><div class="name">3️⃣ Интернет-эквайринг</div><div class="desc">Для сайтов — от 2,6%. В «Альфа-Бизнес Онлайн»</div></div><div class="product-card"><div class="name">4️⃣ «Альфа-Про»</div><div class="desc">ИИ-помощники, юристы, проверка контрагентов. Раздел «Сервисы»</div></div><div class="product-card"><div class="name">5️⃣ «Подели»</div><div class="desc">BNPL-рассрочка на оборудование</div></div><br>Все инструкции — в приложении. Если нужна помощь — я рядом!`;
+            } else if (style === 'care') {
+                msg = `📌 <strong>Туториалы по сервисам Альфа-Банка</strong> ❤️<br><br><div class="product-card"><div class="name">1️⃣ СБП в MAX</div><div class="desc">Приём платежей без терминала — до 0,7%. Видео в «Альфа-Бизнес»</div></div><div class="product-card"><div class="name">2️⃣ Торговый эквайринг</div><div class="desc">Терминал для офлайн-точек — от 1,99%. Раздел «Эквайринг»</div></div><div class="product-card"><div class="name">3️⃣ Интернет-эквайринг</div><div class="desc">Для сайтов — от 2,6%. В «Альфа-Бизнес Онлайн»</div></div><div class="product-card"><div class="name">4️⃣ «Альфа-Про»</div><div class="desc">ИИ-помощники, юристы, проверка контрагентов</div></div><div class="product-card"><div class="name">5️⃣ «Подели»</div><div class="desc">BNPL-рассрочка на оборудование</div></div><br>Если что-то непонятно — я всегда рядом 😊`;
+            } else {
+                msg = `📌 <strong>Туториалы по сервисам Альфа-Банка</strong> 🔥<br><br><div class="product-card"><div class="name">1️⃣ СБП в MAX</div><div class="desc">Приём платежей без терминала — до 0,7%. Видео в «Альфа-Бизнес»</div></div><div class="product-card"><div class="name">2️⃣ Торговый эквайринг</div><div class="desc">Терминал для офлайн-точек — от 1,99%. Раздел «Эквайринг»</div></div><div class="product-card"><div class="name">3️⃣ Интернет-эквайринг</div><div class="desc">Для сайтов — от 2,6%. В «Альфа-Бизнес Онлайн»</div></div><div class="product-card"><div class="name">4️⃣ «Альфа-Про»</div><div class="desc">ИИ-помощники, юристы, проверка контрагентов</div></div><div class="product-card"><div class="name">5️⃣ «Подели»</div><div class="desc">BNPL-рассрочка на оборудование</div></div><br>Если чё — пиши, я помогу 🔥`;
+            }
+            addMessage('bot', msg);
+            return;
+        }
+
+        // ============================================================
+        // КОМАНДА: ПРОДУКТЫ
+        // ============================================================
+        if (lower.includes('продукт') || lower.includes('сервис')) {
+            let msg = '';
+            if (style === 'business') {
+                msg = `📌 <strong>Продукты Альфа-Банка для твоего бизнеса:</strong><br><br>• СБП в MAX — до 0,7%<br>• Торговый эквайринг — от 1,99%<br>• Интернет-эквайринг — от 2,6%<br>• «Альфа-Про» — 1 100 ₽/мес.<br>• «Подели» — BNPL-рассрочка<br><br>Напиши "Туториал" для подробных инструкций.`;
+            } else if (style === 'care') {
+                msg = `📌 <strong>Продукты Альфа-Банка для твоего бизнеса</strong> 😊<br><br>• СБП в MAX — до 0,7%<br>• Торговый эквайринг — от 1,99%<br>• Интернет-эквайринг — от 2,6%<br>• «Альфа-Про» — 1 100 ₽/мес.<br>• «Подели» — BNPL-рассрочка<br><br>Напиши "Туториал" для подробных инструкций ❤️`;
+            } else {
+                msg = `📌 <strong>Продукты Альфа-Банка для твоего бизнеса</strong> 🔥<br><br>• СБП в MAX — до 0,7%<br>• Торговый эквайринг — от 1,99%<br>• Интернет-эквайринг — от 2,6%<br>• «Альфа-Про» — 1 100 ₽/мес.<br>• «Подели» — BNPL-рассрочка<br><br>Напиши "Туториал" для подробных инструкций 🚀`;
+            }
+            addMessage('bot', msg);
+            return;
+        }
+
+        // ============================================================
+        // ШАГИ: "ГОТОВО" / "ДА" (для трека "навигатор")
+        // ============================================================
+        if ((lower.includes('готово') || lower.includes('готов') || lower.includes('да')) && track === 'navigator') {
+            if (memory.step < 4) {
+                memory.step++;
+                updateProgress();
+                const nicheName = getNicheName(memory.niche);
+                let msg = '';
+
+                if (memory.step === 2) {
+                    if (style === 'business') {
+                        msg = `📌 <strong>Шаг 2: Открой счёт в Альфа-Банке.</strong><br>Всё онлайн через приложение «Альфа-Бизнес». Займёт 10 минут.<br><br>📌 После открытия напиши <strong>"Готово"</strong> — я расскажу про СБП в MAX.`;
+                    } else if (style === 'care') {
+                        msg = `💛 <strong>Шаг 2: Открыть счёт в Альфа-Банке.</strong><br><br>Это быстро и удобно — всё онлайн через «Альфа-Бизнес» за 10 минут. Я помогу тебе с каждым полем 😊<br><br>📌 Напиши <strong>"Готово"</strong>, и я покажу, как принимать платежи через СБП в MAX 🌟`;
+                    } else {
+                        msg = `🤙 <strong>Шаг 2: Счёт в Альфа-Банке.</strong><br><br>Всё онлайн через «Альфа-Бизнес» за 10 минут. Я рядом, если что-то непонятно 😎<br><br>📌 Напиши <strong>"Готово"</strong> — и погнали к платежам через СБП в MAX 🚀`;
+                    }
+                } else if (memory.step === 3) {
+                    if (style === 'business') {
+                        msg = `📌 <strong>Шаг 3: Подключи СБП в MAX.</strong><br>Принимай платежи без терминала — через телефон. Комиссия до 0,7%.<br>Подключение через «Альфа-Бизнес Онлайн» — 2 минуты.<br><br>📌 Напиши <strong>"Готово"</strong> после подключения.`;
+                    } else if (style === 'care') {
+                        msg = `💜 <strong>Шаг 3: Подключить СБП в MAX.</strong><br><br>Это вообще без терминала! 😊 Принимай платежи прямо через телефон. Комиссия всего до 0,7% — выгоднее, чем эквайринг.<br><br>Подключение через «Альфа-Бизнес Онлайн» за 2 минуты. Я покажу, как это сделать.<br><br>📌 Напиши <strong>"Готово"</strong>, и сделаем первый платёж 🌟`;
+                    } else {
+                        msg = `🤙 <strong>Шаг 3: СБП в MAX.</strong><br><br>Без терминала! Принимай платежи через телефон. Комиссия копеечная — до 0,7%.<br><br>Подключается через «Альфа-Бизнес Онлайн» за 2 минуты. Я покажу.<br><br>📌 Напиши <strong>"Готово"</strong> — и замутим первый платёж 🔥`;
+                    }
+                } else if (memory.step === 4) {
+                    if (style === 'business') {
+                        msg = `🎉 <strong>Шаг 4: Прими первый платёж!</strong><br><br>Твой клиент оплачивает через СБП в MAX или картой — и ты в деле!<br><br>📌 У Альфа-Банка есть всё для роста:<br>• СБП в MAX — до 0,7%<br>• Торговый эквайринг — от 1,99%<br>• Интернет-эквайринг — от 2,6%<br>• Подписка «Альфа-Про» — ИИ-помощники, юристы, проверка контрагентов<br><br>🎉 <strong>Поздравляю! Ты открыл бизнес!</strong><br><br>Напиши "Туториал" для инструкций.<br>Напиши "Кредит" для финансовых продуктов.`;
+                    } else if (style === 'care') {
+                        msg = `🎉 <strong>Шаг 4: Принять первый платёж!</strong><br><br>Твой клиент оплачивает через СБП в MAX или картой — и ты в деле!<br><br>📌 У Альфа-Банка есть всё для роста:<br>💛 СБП в MAX — до 0,7%<br>💛 Торговый эквайринг — от 1,99%<br>💛 Интернет-эквайринг — от 2,6%<br>💛 Подписка «Альфа-Про» — ИИ-помощники, юристы, проверка контрагентов<br><br>🎉 <strong>Ты справилась! Я так горжусь тобой ❤️</strong><br><br>Напиши "Туториал" для видеоинструкций.<br>Напиши "Кредит" для финансовых продуктов.`;
+                    } else {
+                        msg = `🎉 <strong>Шаг 4: Первый платёж!</strong><br><br>Клиент оплачивает через СБП в MAX или картой — и ты в игре!<br><br>📌 У Альфа-Банка для тебя:<br>🔥 СБП в MAX — до 0,7%<br>🔥 Торговый эквайринг — от 1,99%<br>🔥 Интернет-эквайринг — от 2,6%<br>🔥 Подписка «Альфа-Про» — ИИ-помощники, юристы, проверка контрагентов<br><br>🎉 <strong>Ты красавчик! Открыл бизнес! 🚀🤘</strong><br><br>Напиши "Туториал" — я скину видео.<br>Напиши "Кредит" — расскажу про финансы.`;
+                    }
+                }
+                addMessage('bot', msg);
+                return;
+            } else if (memory.step === 4) {
+                let msg = '';
+                if (style === 'business') {
+                    msg = `🎉 Поздравляю! Ты уже прошёл все шаги. Бизнес открыт!<br><br>📌 Все сервисы Альфа-Банка уже доступны:<br>• СБП в MAX — до 0,7%<br>• Торговый эквайринг — от 1,99%<br>• Интернет-эквайринг — от 2,6%<br>• «Альфа-Про» — ИИ-помощники<br><br>Напиши "Туториал" для инструкций.<br>Напиши "Кредит" для финансов.`;
+                } else if (style === 'care') {
+                    msg = `🎉 Поздравляю! Ты уже прошла все шаги. Бизнес открыт! ❤️<br><br>📌 Все сервисы Альфа-Банка уже доступны:<br>• СБП в MAX — до 0,7%<br>• Торговый эквайринг — от 1,99%<br>• Интернет-эквайринг — от 2,6%<br>• «Альфа-Про» — ИИ-помощники<br><br>Напиши "Туториал" для видеоинструкций 😊`;
+                } else {
+                    msg = `🎉 Поздравляю! Ты уже прошёл все шаги. Бизнес открыт! 🤘<br><br>📌 Все сервисы Альфа-Банка уже доступны:<br>• СБП в MAX — до 0,7%<br>• Торговый эквайринг — от 1,99%<br>• Интернет-эквайринг — от 2,6%<br>• «Альфа-Про» — ИИ-помощники<br><br>Напиши "Туториал" для инструкций 🚀`;
+                }
+                addMessage('bot', msg);
+                return;
+            }
+        }
+
+        // ============================================================
+        // ЕСЛИ ПОЛЬЗОВАТЕЛЬ НЕ ВЫБРАЛ ТРЕК
+        // ============================================================
+        if (!track) {
+            addMessage('bot', 'Сначала выбери, что тебе нужно: "Не знаю, что открыть" или "У меня есть идея" 😊');
+            return;
+        }
+
+        // ============================================================
+        // ЕСЛИ ПОЛЬЗОВАТЕЛЬ НЕ ВЫБРАЛ НИШУ
+        // ============================================================
+        if (!memory.niche) {
+            addMessage('bot', 'Выбери нишу из кнопок выше: Красота, HoReCa, Торговля или Другое 😊');
+            return;
+        }
+
+        // ============================================================
+        // ОБЫЧНЫЙ ОТВЕТ (если ни одно условие не сработало)
+        // ============================================================
+        let reply = '';
+        if (style === 'business') {
+            reply = `Я тебя услышал.<br><br>📌 Вот что я могу предложить:<br>• "План" — подробный план действий<br>• "Кредит" — финансовые продукты<br>• "Туториал" — инструкции по сервисам<br>• "Продукты" — список продуктов Альфа-Банка<br><br>Если ты на каком-то шаге, напиши "Готово", чтобы продолжить.`;
+        } else if (style === 'care') {
+            reply = `😊 Я поняла!<br><br>📌 Вот что я могу предложить:<br>• "План" — подробный план действий<br>• "Кредит" — финансовые продукты<br>• "Туториал" — инструкции по сервисам<br>• "Продукты" — список продуктов Альфа-Банка<br><br>Если ты на каком-то шаге, напиши "Готово", чтобы продолжить ❤️`;
+        } else {
+            reply = `🤙 Понял!<br><br>📌 Вот что я могу предложить:<br>• "План" — подробный план действий<br>• "Кредит" — финансовые продукты<br>• "Туториал" — инструкции по сервисам<br>• "Продукты" — список продуктов Альфа-Банка<br><br>Если ты на каком-то шаге, напиши "Готово", чтобы продолжить 🚀`;
+        }
+        addMessage('bot', reply);
+    }, 800);
+}
+
+// ================================================================
+// ИНИЦИАЛИЗАЦИЯ
+// ================================================================
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('Вайби загружен! 🚀');
+    console.log('Память:', memory);
+});
+</script>
+</body>
+</html>
